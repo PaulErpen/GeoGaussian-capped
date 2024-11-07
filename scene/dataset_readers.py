@@ -368,8 +368,140 @@ def readManhattanSceneInfo(path, white_background, eval, sparse_num):
                            ply_path=ply_path)
     return scene_info
 
+def readCamerasFromTransforms(path, transformsfile, white_background, extension=".png"):
+    cam_infos = []
+
+    with open(os.path.join(path, transformsfile)) as json_file:
+        contents = json.load(json_file)
+        fovx = contents["camera_angle_x"]
+
+        frames = contents["frames"]
+        for idx, frame in enumerate(frames):
+            cam_name = os.path.join(path, frame["file_path"] + extension)
+
+            # NeRF 'transform_matrix' is a camera-to-world transform
+            c2w = np.array(frame["transform_matrix"])
+            # change from OpenGL/Blender camera axes (Y up, Z back) to COLMAP (Y down, Z forward)
+            c2w[:3, 1:3] *= -1
+
+            # get the world-to-camera transform and set R, T
+            w2c = np.linalg.inv(c2w)
+            R = np.transpose(w2c[:3,:3])  # R is stored transposed due to 'glm' in CUDA code
+            T = w2c[:3, 3]
+
+            image_path = os.path.join(path, cam_name)
+            image_name = Path(cam_name).stem
+            image = Image.open(image_path)
+
+            im_data = np.array(image.convert("RGBA"))
+
+            bg = np.array([1,1,1]) if white_background else np.array([0, 0, 0])
+
+            norm_data = im_data / 255.0
+            arr = norm_data[:,:,:3] * norm_data[:, :, 3:4] + bg * (1 - norm_data[:, :, 3:4])
+            image = Image.fromarray(np.array(arr*255.0, dtype=np.byte), "RGB")
+
+            fovy = focal2fov(fov2focal(fovx, image.size[0]), image.size[1])
+            FovY = fovy 
+            FovX = fovx
+
+            cam_infos.append(CameraInfo(uid=idx, 
+                                        R=R, 
+                                        T=T, 
+                                        FovY=FovY, 
+                                        FovX=FovX, 
+                                        image=image,
+                                        image_path=image_path, 
+                                        image_name=image_name, 
+                                        width=image.size[0], 
+                                        image_depth=image,
+                                        height=image.size[1]))
+            
+    return cam_infos
+
+def compute_blender_pcd_type(positions: np.array):
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(positions.reshape(-1, 3))
+    pcd.estimate_normals(
+        search_param=o3d.geometry.KDTreeSearchParamKNN(knn=10))
+
+    normals = np.array(pcd.normals)
+    colors = np.zeros_like(positions)
+    colors += np.array([1, 0, 0])
+    types = np.zeros((colors.shape[0], 1))
+
+
+    knn_tree = o3d.geometry.KDTreeFlann(pcd)
+    # 寻找最近邻点
+    k = 5
+    knn_indexs = [knn_tree.search_knn_vector_3d(p, knn=k)[1] for p in pcd.points]
+    for knn_index in knn_indexs:
+        is_valid = True
+        current_normal = normals[knn_index[0]]
+        for idx in range(k):
+            if np.sum(current_normal * normals[knn_index[idx]]) < 1-np.cos(0.03):
+                is_valid = False
+                break
+        if is_valid:
+            for idx in range(k):
+                types[knn_index[idx]] = 1
+    return types
+
+def readNerfSyntheticInfo(path, n_start_gaussians, white_background, eval, extension=".png"):
+    print("Reading Training Transforms")
+    train_cam_infos = readCamerasFromTransforms(path, "transforms_train.json", white_background, extension)
+    print("Reading Test Transforms")
+    test_cam_infos = readCamerasFromTransforms(path, "transforms_test.json", white_background, extension)
+    
+    if not eval:
+        train_cam_infos.extend(test_cam_infos)
+        test_cam_infos = []
+
+    nerf_normalization = getNerfppNorm(train_cam_infos)
+
+    
+
+    ply_path = os.path.join(path, "points3d.ply")
+    if not os.path.exists(ply_path):
+        # Since this data set has no colmap data, we start with random points
+        num_pts = 100_000
+        print(f"Generating random point cloud ({num_pts})...")
+        
+        # We create random points inside the bounds of the synthetic Blender scenes
+        xyz = np.random.random((num_pts, 3)) * 2.6 - 1.3
+        shs = np.random.random((num_pts, 3)) / 255.0
+        pcd = BasicPointCloud(points=xyz, 
+                              colors=SH2RGB(shs), 
+                              normals=np.zeros((num_pts, 3)), 
+                              types=np.zeros((num_pts, 1)))
+
+        storePly(ply_path, xyz, SH2RGB(shs) * 255)
+    try:
+        pcd = fetchPly(ply_path)
+    except:
+        pcd = None
+
+    if n_start_gaussians is not None and pcd is not None:
+        print("Subsampling point cloud")
+        np.random.seed(123)
+        chosen_points = np.random.choice(pcd.points.shape[0], n_start_gaussians, replace=False)
+        pcd = BasicPointCloud(pcd.points[chosen_points], 
+                              pcd.colors[chosen_points], 
+                              pcd.normals[chosen_points],
+                              types=compute_blender_pcd_type(pcd.points[chosen_points]))
+        
+    assert pcd is not None, "Initial point-cloud cannot be None!"
+
+    scene_info = SceneInfo(point_cloud=pcd,
+                           train_cameras=train_cam_infos,
+                           test_cameras=test_cam_infos,
+                           nerf_normalization=nerf_normalization,
+                           ply_path=ply_path)
+    return scene_info
+
 
 sceneLoadTypeCallbacks = {
     "Colmap": readColmapSceneInfo,
-    "Manhattan" : readManhattanSceneInfo
+    "Manhattan" : readManhattanSceneInfo,
+    "Blender" : readNerfSyntheticInfo
 }
