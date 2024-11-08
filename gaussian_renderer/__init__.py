@@ -108,6 +108,9 @@ def render(viewpoint_camera, pc : GaussianModel, pipe, bg_color : torch.Tensor, 
     if count_epoch > 0 and count_epoch%100 == 0:
         trans = torchvision.transforms.ToPILImage()
 
+        if not os.path.exists('output/'):
+            os.mkdir('output')
+
         rgb_image = trans(torch.clamp(rendered_image, 0.0, 1.0))
         if not os.path.exists('output/rgb/'):
             os.mkdir('output/rgb/')
