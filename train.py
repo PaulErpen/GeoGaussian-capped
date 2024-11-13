@@ -229,7 +229,7 @@ def training_report(tb_writer, iteration, Ll1, loss, l1_loss, elapsed, testing_i
             {'name': 'test_full', 'cameras' : scene.getTestCameras()},
             {'name': 'train_every_5th', 'cameras' : [scene.getTrainCameras()[idx] for idx in range(0, len(scene.getTrainCameras()), 5)]}
         )
-        
+
         for config in validation_configs:
             if config['cameras'] and len(config['cameras']) > 0:
                 l1_test = 0.0
@@ -314,12 +314,11 @@ if __name__ == "__main__":
     parser.add_argument("--checkpoint_iterations", nargs="+", type=int, default=[7000, 30_000])
     parser.add_argument("--start_checkpoint", type=str, default = None)
     parser.add_argument("--num_max", type=int, default = None, help="Maximum number of splats in the scene")
-    args = parser.parse_args(sys.argv[1:])
-    args.save_iterations.append(args.iterations)
-
     parser.add_argument("--wandb_key", type=str, default="", help="The key used to sign into weights & biases logging")
     parser.add_argument("--wandb_project", type=str, default="")
     parser.add_argument("--wandb_run_name", type=str, default=None)
+    args = parser.parse_args(sys.argv[1:])
+    args.save_iterations.append(args.iterations)
 
     wand_run = init_wandb(args.wandb_key, args.wandb_project, args.wandb_run_name, args.model_path, args)
 
