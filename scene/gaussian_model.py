@@ -564,8 +564,10 @@ class GaussianModel:
         else:
             mask_top = None
 
+        before = self._xyz.shape[0]
         self.densify_and_clone(grads, max_grad, extent, mask_top=mask_top)
         self.densify_and_split(grads, max_grad, extent, mask_top=mask_top)
+        after_split = self._xyz.shape[0]
 
         prune_mask = (self.get_opacity < min_opacity).squeeze()
         if max_screen_size:
@@ -573,8 +575,11 @@ class GaussianModel:
             big_points_ws = self.get_scaling.max(dim=1).values > 0.1 * extent
             prune_mask = torch.logical_or(torch.logical_or(prune_mask, big_points_vs), big_points_ws)
         self.prune_points(prune_mask)
+        after_prune = self._xyz.shape[0]
 
         torch.cuda.empty_cache()
+
+        return after_split - before, after_split - after_prune
 
     def add_densification_stats(self, viewspace_point_tensor, update_filter):
         self.xyz_gradient_accum[update_filter] += torch.norm(viewspace_point_tensor.grad[update_filter,:2], dim=-1, keepdim=True)
