@@ -41,7 +41,7 @@ class Scene:
         self.test_cameras = {}
 
         if os.path.exists(os.path.join(args.source_path, "sparse")):
-            scene_info = sceneLoadTypeCallbacks["Colmap"](args.source_path, args.images, args.eval)
+            scene_info = sceneLoadTypeCallbacks["Colmap"](args.source_path, args.images, args.eval, args.n_start_gaussians)
         elif os.path.exists(os.path.join(args.source_path, "KeyFrameTrajectory2.txt")):
             print("Found KeyFrameTrajectory2.txt file, assuming Manhattan data set!")
             scene_info = sceneLoadTypeCallbacks["Manhattan"](args.source_path, args.white_background, args.eval, sparse_num)
