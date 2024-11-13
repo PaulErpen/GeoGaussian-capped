@@ -30,7 +30,7 @@ try:
 except ImportError:
     TENSORBOARD_FOUND = False
 
-from lpipsPyTorch import lpips
+# from lpipsPyTorch import lpips
 
 
 def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoint_iterations, checkpoint, debug_from, sparse_num=1):
@@ -203,7 +203,7 @@ def training_report(tb_writer, iteration, Ll1, loss, l1_loss, elapsed, testing_i
                 # l1_d_test = 0.0
                 psnr_test = 0.0
                 ssim_test = 0.0
-                lpips_test = 0.0
+                # lpips_test = 0.0
                 for idx, viewpoint in enumerate(config['cameras']):
                     render = renderFunc(viewpoint, scene.gaussians, *renderArgs)
                     image = torch.clamp(render["render"], 0.0, 1.0)
@@ -218,20 +218,19 @@ def training_report(tb_writer, iteration, Ll1, loss, l1_loss, elapsed, testing_i
                     # l1_d_test += l1_loss(image_d, gt_image_depth).mean().double()
                     psnr_test += psnr(image, gt_image).mean().double()
                     ssim_test += ssim(image, gt_image)
-                    lpips_test += lpips(image, gt_image, net_type='alex').item()
+                    # lpips_test += lpips(image, gt_image, net_type='alex').item()
 
 
                 psnr_test /= len(config['cameras'])
                 l1_test /= len(config['cameras'])
                 # l1_d_test /= len(config['cameras'])
                 ssim_test /= len(config['cameras'])
-                lpips_test /= len(config['cameras'])
-                print("\n[ITER {}] Evaluating {}: L1 {:0.4f} PSNR {:0.2f} SSIM {:0.3f} LPIPS {:0.3f}".format(iteration, config['name'], l1_test, psnr_test, ssim_test, lpips_test))
+                # lpips_test /= len(config['cameras'])
+                print("\n[ITER {}] Evaluating {}: L1 {:0.4f} PSNR {:0.2f} SSIM {:0.3f}".format(iteration, config['name'], l1_test, psnr_test, ssim_test))
                 if tb_writer:
                     tb_writer.add_scalar(config['name'] + '/loss_viewpoint - l1_loss', l1_test, iteration)
                     tb_writer.add_scalar(config['name'] + '/loss_viewpoint - psnr', psnr_test, iteration)
                     tb_writer.add_scalar(config['name'] + '/loss_viewpoint - ssim', ssim_test, iteration)
-                    tb_writer.add_scalar(config['name'] + '/loss_viewpoint - lpips', lpips_test, iteration)
 
         if tb_writer:
             tb_writer.add_histogram("scene/opacity_histogram", scene.gaussians.get_opacity, iteration)
