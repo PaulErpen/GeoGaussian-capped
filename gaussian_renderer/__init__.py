@@ -105,34 +105,34 @@ def render(viewpoint_camera, pc : GaussianModel, pipe, bg_color : torch.Tensor, 
     # Show rgb&depth image
     global count_epoch
     count_epoch = count_epoch + 1
-    if count_epoch > 0 and count_epoch%100 == 0:
-        trans = torchvision.transforms.ToPILImage()
-
-        if not os.path.exists('output/'):
-            os.mkdir('output')
-
-        rgb_image = trans(torch.clamp(rendered_image, 0.0, 1.0))
-        if not os.path.exists('output/rgb/'):
-            os.mkdir('output/rgb/')
-        if not os.path.exists('output/depth/'):
-            os.mkdir('output/depth/')
-        rgb_image.save(f'output/rgb/rgb_iter_{count_epoch:0>6d}.png')
-        # depth_image = trans((rendered_depth*5000).short())
-
-        depth_array = rendered_depth.squeeze().detach().cpu().numpy()
-        depth_array_min = np.min(depth_array)
-        depth_array_max = np.max(depth_array)
-        depth_array = (depth_array - depth_array_min)/(depth_array_max - depth_array_min + 1e-8)
-        # depth_image = pil.Image.fromarray(depth_array, mode='F')
-        # 获取Magma colormap
-        magma_cmap = get_cmap('magma')
-        # 应用Magma colormap
-        magma_array = magma_cmap(depth_array)[:, :, :3] * 255
-        # 将数组转换回8位整数
-        magma_array = np.uint8(magma_array)
-        # 创建新的PIL图像
-        magma_img = pil.fromarray(magma_array)
-        magma_img.save(f'output/depth/depth_iter_{count_epoch:0>6d}.png')
+    #if count_epoch > 0 and count_epoch%100 == 0:
+    #    trans = torchvision.transforms.ToPILImage()
+#
+    #    if not os.path.exists('output/'):
+    #        os.mkdir('output')
+#
+    #    rgb_image = trans(torch.clamp(rendered_image, 0.0, 1.0))
+    #    if not os.path.exists('output/rgb/'):
+    #        os.mkdir('output/rgb/')
+    #    if not os.path.exists('output/depth/'):
+    #        os.mkdir('output/depth/')
+    #    rgb_image.save(f'output/rgb/rgb_iter_{count_epoch:0>6d}.png')
+    #    # depth_image = trans((rendered_depth*5000).short())
+#
+    #    depth_array = rendered_depth.squeeze().detach().cpu().numpy()
+    #    depth_array_min = np.min(depth_array)
+    #    depth_array_max = np.max(depth_array)
+    #    depth_array = (depth_array - depth_array_min)/(depth_array_max - depth_array_min + 1e-8)
+    #    # depth_image = pil.Image.fromarray(depth_array, mode='F')
+    #    # 获取Magma colormap
+    #    magma_cmap = get_cmap('magma')
+    #    # 应用Magma colormap
+    #    magma_array = magma_cmap(depth_array)[:, :, :3] * 255
+    #    # 将数组转换回8位整数
+    #    magma_array = np.uint8(magma_array)
+    #    # 创建新的PIL图像
+    #    magma_img = pil.fromarray(magma_array)
+    #    magma_img.save(f'output/depth/depth_iter_{count_epoch:0>6d}.png')
 
         #
         # image_np = rendered_image.squeeze().permute(1, 2, 0).detach().cpu().numpy()
